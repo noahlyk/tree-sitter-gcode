@@ -6,6 +6,21 @@ LANGUAGE_NAME := tree-sitter-gcode
 HOMEPAGE_URL := https://github.com/chocolatenao/tree-sitter-gcode.git
 VERSION := 0.1.2
 
+# Version reported by `make version`, from git (the VERSION above is the package version):
+#   v0.1.2 checked out            -> 0.1.2
+#   8 commits past v0.1.2         -> 0.1.2+8.g0587d41
+#   uncommitted changes           -> ...+dirty
+#   no tags / no git              -> 0.0.0+g0587d41 / 0.0.0
+GIT_VERSION = $(shell \
+	if d=$$(git describe --tags --long --match 'v[0-9]*' 2>/dev/null); then \
+		t=$${d%-g*}; n=$${t##*-}; v=$${t%-*}; v=$${v#v}; \
+		m=$$(test "$$n" -gt 0 && echo "$$n.g$${d##*-g}"); \
+	else \
+		v=0.0.0; h=$$(git rev-parse --short HEAD 2>/dev/null); m=$${h:+g$$h}; \
+	fi; \
+	test -n "$$(git status --porcelain --untracked-files=no 2>/dev/null)" && m=$${m:+$$m.}dirty; \
+	echo "$$v$${m:++$$m}")
+
 # repository
 SRC_DIR := src
 
@@ -96,4 +111,7 @@ clean:
 test:
 	$(TS) test
 
-.PHONY: all install uninstall clean test
+version:
+	@echo $(GIT_VERSION)
+
+.PHONY: all install uninstall clean test version
