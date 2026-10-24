@@ -46,18 +46,19 @@ module.exports = grammar({
     program_marker: (_) => token(seq('%', /\r?\n?/)),
 
     // Content outside the % markers — one contiguous block of non-% text
-    outside_program: (_) => token(/[^%]+/),
+    // Matches lines with spaces (outside content), not gcode
+    outside_program: (_) => token(/[^%\n]+ [^%\n]*\n?/),
 
-
-
-    _statement: ($) => choice($.line, $.unsigned_integer, $.eol_comment, $.inline_comment),
+    _statement: ($) =>
+      choice($.line, $.unsigned_integer, $.eol_comment, $.inline_comment),
 
     _end_of_line: ($) => choice(/\n/, /\r\n/, /\r/, $.eol_comment),
 
     // Keyword tokens include leading \s* and \s*,\s* so they are longer than any
     // ic_regular alternative that stops before the comma.
-    ic_debug_keyword: (_) => token(seq(/\s*/, /[Dd][Ee][Bb][Uu][Gg]/, /\s*,\s*/)),
-    ic_msg_keyword:   (_) => token(seq(/\s*/, /[Mm][Ss][Gg]/,         /\s*,\s*/)),
+    ic_debug_keyword: (_) =>
+      token(seq(/\s*/, /[Dd][Ee][Bb][Uu][Gg]/, /\s*,\s*/)),
+    ic_msg_keyword: (_) => token(seq(/\s*/, /[Mm][Ss][Gg]/, /\s*,\s*/)),
 
     // Message: trim surrounding whitespace — starts and ends on non-whitespace non-)
     ic_message: (_) => token(/[^)\s]([^)]*[^)\s])?/),
@@ -67,60 +68,58 @@ module.exports = grammar({
     // one level of nested parens like (ClearanceFinish (8)).
     // The nested-paren tail pattern: [^()]*(\([^)]*\)[^()]*)*
     // replaces the old plain [^)]* tail.
-    ic_regular: (_) => token(choice(
-      // anything not starting with D, M, or whitespace
-      /[^DMdm\s()][^()]*(\([^)]*\)[^()]*)*/,
-      // whitespace-only content (empty-ish comment)
-      /\s+/,
-      // whitespace + non-D/M start
-      /\s+[^DMdm()][^()]*(\([^)]*\)[^()]*)*/,
-      // D but not DEBUG,
-      /[Dd][^Ee()][^()]*(\([^)]*\)[^()]*)*/,
-      /[Dd][Ee][^Bb()][^()]*(\([^)]*\)[^()]*)*/,
-      /[Dd][Ee][Bb][^Uu()][^()]*(\([^)]*\)[^()]*)*/,
-      /[Dd][Ee][Bb][Uu][^Gg()][^()]*(\([^)]*\)[^()]*)*/,
-      /[Dd][Ee][Bb][Uu][Gg][^,\s()][^()]*(\([^)]*\)[^()]*)*/,
-      /[Dd][Ee][Bb][Uu][Gg]\s+[^,()][^()]*(\([^)]*\)[^()]*)*/,
-      // M but not MSG,
-      /[Mm][^Ss()][^()]*(\([^)]*\)[^()]*)*/,
-      /[Mm][Ss][^Gg()][^()]*(\([^)]*\)[^()]*)*/,
-      /[Mm][Ss][Gg][^,\s()][^()]*(\([^)]*\)[^()]*)*/,
-      /[Mm][Ss][Gg]\s+[^,()][^()]*(\([^)]*\)[^()]*)*/,
-      // whitespace + D but not DEBUG,
-      /\s+[Dd][^Ee()][^()]*(\([^)]*\)[^()]*)*/,
-      /\s+[Dd][Ee][^Bb()][^()]*(\([^)]*\)[^()]*)*/,
-      /\s+[Dd][Ee][Bb][^Uu()][^()]*(\([^)]*\)[^()]*)*/,
-      /\s+[Dd][Ee][Bb][Uu][^Gg()][^()]*(\([^)]*\)[^()]*)*/,
-      /\s+[Dd][Ee][Bb][Uu][Gg][^,\s()][^()]*(\([^)]*\)[^()]*)*/,
-      /\s+[Dd][Ee][Bb][Uu][Gg]\s+[^,()][^()]*(\([^)]*\)[^()]*)*/,
-      // whitespace + M but not MSG,
-      /\s+[Mm][^Ss()][^()]*(\([^)]*\)[^()]*)*/,
-      /\s+[Mm][Ss][^Gg()][^()]*(\([^)]*\)[^()]*)*/,
-      /\s+[Mm][Ss][Gg][^,\s()][^()]*(\([^)]*\)[^()]*)*/,
-      /\s+[Mm][Ss][Gg]\s+[^,()][^()]*(\([^)]*\)[^()]*)*/,
-      // content that starts with a nested paren
-      /\([^)]*\)[^()]*(\([^)]*\)[^()]*)*/,
-      // whitespace + nested paren
-      /\s+\([^)]*\)[^()]*(\([^)]*\)[^()]*)*/,
-    )),
+    ic_regular: (_) =>
+      token(
+        choice(
+          // anything not starting with D, M, or whitespace
+          /[^DMdm\s()][^()]*(\([^)]*\)[^()]*)*/,
+          // whitespace-only content (empty-ish comment)
+          /\s+/,
+          // whitespace + non-D/M start
+          /\s+[^DMdm()][^()]*(\([^)]*\)[^()]*)*/,
+          // D but not DEBUG,
+          /[Dd][^Ee()][^()]*(\([^)]*\)[^()]*)*/,
+          /[Dd][Ee][^Bb()][^()]*(\([^)]*\)[^()]*)*/,
+          /[Dd][Ee][Bb][^Uu()][^()]*(\([^)]*\)[^()]*)*/,
+          /[Dd][Ee][Bb][Uu][^Gg()][^()]*(\([^)]*\)[^()]*)*/,
+          /[Dd][Ee][Bb][Uu][Gg][^,\s()][^()]*(\([^)]*\)[^()]*)*/,
+          /[Dd][Ee][Bb][Uu][Gg]\s+[^,()][^()]*(\([^)]*\)[^()]*)*/,
+          // M but not MSG,
+          /[Mm][^Ss()][^()]*(\([^)]*\)[^()]*)*/,
+          /[Mm][Ss][^Gg()][^()]*(\([^)]*\)[^()]*)*/,
+          /[Mm][Ss][Gg][^,\s()][^()]*(\([^)]*\)[^()]*)*/,
+          /[Mm][Ss][Gg]\s+[^,()][^()]*(\([^)]*\)[^()]*)*/,
+          // whitespace + D but not DEBUG,
+          /\s+[Dd][^Ee()][^()]*(\([^)]*\)[^()]*)*/,
+          /\s+[Dd][Ee][^Bb()][^()]*(\([^)]*\)[^()]*)*/,
+          /\s+[Dd][Ee][Bb][^Uu()][^()]*(\([^)]*\)[^()]*)*/,
+          /\s+[Dd][Ee][Bb][Uu][^Gg()][^()]*(\([^)]*\)[^()]*)*/,
+          /\s+[Dd][Ee][Bb][Uu][Gg][^,\s()][^()]*(\([^)]*\)[^()]*)*/,
+          /\s+[Dd][Ee][Bb][Uu][Gg]\s+[^,()][^()]*(\([^)]*\)[^()]*)*/,
+          // whitespace + M but not MSG,
+          /\s+[Mm][^Ss()][^()]*(\([^)]*\)[^()]*)*/,
+          /\s+[Mm][Ss][^Gg()][^()]*(\([^)]*\)[^()]*)*/,
+          /\s+[Mm][Ss][Gg][^,\s()][^()]*(\([^)]*\)[^()]*)*/,
+          /\s+[Mm][Ss][Gg]\s+[^,()][^()]*(\([^)]*\)[^()]*)*/,
+          // content that starts with a nested paren
+          /\([^)]*\)[^()]*(\([^)]*\)[^()]*)*/,
+          // whitespace + nested paren
+          /\s+\([^)]*\)[^()]*(\([^)]*\)[^()]*)*/,
+        ),
+      ),
 
-    keyword_comment: ($) => seq(
-      '(',
-      field('keyword', choice($.ic_debug_keyword, $.ic_msg_keyword)),
-      field('message', $.ic_message),
-      ')',
-    ),
+    keyword_comment: ($) =>
+      seq(
+        '(',
+        field('keyword', choice($.ic_debug_keyword, $.ic_msg_keyword)),
+        field('message', $.ic_message),
+        ')',
+      ),
 
-    regular_comment: ($) => seq(
-      '(',
-      optional(field('content', $.ic_regular)),
-      ')',
-    ),
+    regular_comment: ($) =>
+      seq('(', optional(field('content', $.ic_regular)), ')'),
 
-    inline_comment: ($) => choice(
-      $.keyword_comment,
-      $.regular_comment,
-    ),
+    inline_comment: ($) => choice($.keyword_comment, $.regular_comment),
 
     // EOL comment: ; followed by named content node
     eol_comment_content: (_) => /.*/,
@@ -239,14 +238,11 @@ module.exports = grammar({
         $._word_code,
       ),
 
-    arc_word: ($) =>
-      prec.left(seq($._arc_identifier, optional($._word_code))),
+    arc_word: ($) => prec.left(seq($._arc_identifier, optional($._word_code))),
 
-    r_word: ($) =>
-      prec.left(seq($._r_identifier, optional($._word_code))),
+    r_word: ($) => prec.left(seq($._r_identifier, optional($._word_code))),
 
-    h_word: ($) =>
-      prec.left(seq($._h_identifier, optional($._word_code))),
+    h_word: ($) => prec.left(seq($._h_identifier, optional($._word_code))),
 
     other_word: ($) =>
       prec.left(seq($._other_word_identifier, optional($._word_code))),
